@@ -36,37 +36,26 @@ services:
       - EMAIL_USE_TLS=${EMAIL_USE_TLS:-False}
       - EMAIL_USE_SSL=${EMAIL_USE_SSL:-False}
       
-      # Superuser (remove this after first setup)
+      # Superuser
       - CISO_SUPERUSER_EMAIL=${CISO_SUPERUSER_EMAIL}
+      - TEMP_ADMIN_PASSWORD=${TEMP_ADMIN_PASSWORD}
       
-      # Logging (optional)
+      # Logging
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - LOG_FORMAT=${LOG_FORMAT:-plain}
     volumes:
       - ./db:/code/db
+      - ./init_superuser.py:/code/init_superuser.py
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://backend:8000/api/health/ || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 20
       start_period: 100s
-    # Temporary: Create superuser with default password on startup
     command: >
       sh -c "
       poetry run python manage.py migrate &&
-      poetry run python manage.py shell -c \"
-      from iam.models import User;
-      if not User.objects.filter(email='${CISO_SUPERUSER_EMAIL}').exists():
-          user = User.objects.create_superuser(
-              email='${CISO_SUPERUSER_EMAIL}',
-              password='${TEMP_ADMIN_PASSWORD:-ChangeMe123!}',
-              first_name='System',
-              last_name='Overseer'
-          );
-          print('✓ Superuser created: ${CISO_SUPERUSER_EMAIL}');
-      else:
-          print('✓ Superuser already exists');
-      \" &&
+      poetry run python /code/init_superuser.py &&
       poetry run gunicorn --bind 0.0.0.0:8000 --workers 4 --timeout 120 ciso_assistant.wsgi:application
       "
 
