@@ -36,28 +36,20 @@ services:
       - EMAIL_USE_TLS=${EMAIL_USE_TLS:-False}
       - EMAIL_USE_SSL=${EMAIL_USE_SSL:-False}
       
-      # Superuser
+      # Superuser (will trigger email on first start if configured)
       - CISO_SUPERUSER_EMAIL=${CISO_SUPERUSER_EMAIL}
-      - TEMP_ADMIN_PASSWORD=${TEMP_ADMIN_PASSWORD}
       
       # Logging
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - LOG_FORMAT=${LOG_FORMAT:-plain}
     volumes:
       - ./db:/code/db
-      - ./init_superuser.py:/code/init_superuser.py
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://backend:8000/api/health/ || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 20
       start_period: 100s
-    command: >
-      sh -c "
-      poetry run python manage.py migrate &&
-      poetry run python /code/init_superuser.py &&
-      poetry run gunicorn --bind 0.0.0.0:8000 --workers 4 --timeout 120 ciso_assistant.wsgi:application
-      "
 
   huey:
     container_name: huey
@@ -68,15 +60,12 @@ services:
         condition: service_healthy
     restart: always
     environment:
-      # Core Configuration
       - ALLOWED_HOSTS=backend,localhost,${DOMAIN}
       - CSRF_TRUSTED_ORIGINS=https://${DOMAIN}
       - CISO_ASSISTANT_URL=https://${DOMAIN}
       - DJANGO_DEBUG=False
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
       - AUTH_TOKEN_TTL=${AUTH_TOKEN_TTL:-7200}
-      
-      # Email Configuration - SMTP Relay
       - EMAIL_HOST=${EMAIL_HOST}
       - EMAIL_PORT=${EMAIL_PORT}
       - EMAIL_HOST_USER=${EMAIL_HOST_USER:-}
@@ -84,8 +73,6 @@ services:
       - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
       - EMAIL_USE_TLS=${EMAIL_USE_TLS:-False}
       - EMAIL_USE_SSL=${EMAIL_USE_SSL:-False}
-      
-      # Logging
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - LOG_FORMAT=${LOG_FORMAT:-plain}
     volumes:
@@ -111,7 +98,6 @@ services:
       - HOST_HEADER=x-forwarded-host
       - ORIGIN=https://${DOMAIN}
     labels:
-      # Coolify proxy configuration
       - "caddy_0=${DOMAIN}"
       - "caddy_0.reverse_proxy={{upstreams 3000}}"
 
