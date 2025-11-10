@@ -48,7 +48,8 @@ services:
       - DJANGO_DEBUG=False
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
       
-      # PostgreSQL Configuration
+      # PostgreSQL Configuration (CRITICAL - tells Django to use PostgreSQL)
+      - DB_ENGINE=django.db.backends.postgresql
       - POSTGRES_NAME=ciso_assistant
       - POSTGRES_USER=ciso_user
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -102,6 +103,7 @@ services:
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
       
       # PostgreSQL Configuration
+      - DB_ENGINE=django.db.backends.postgresql
       - POSTGRES_NAME=ciso_assistant
       - POSTGRES_USER=ciso_user
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
