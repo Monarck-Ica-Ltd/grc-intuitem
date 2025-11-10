@@ -27,15 +27,16 @@ services:
       # Security
       - SECURE_PROXY_SSL_HEADER=HTTP_X_FORWARDED_PROTO,https
       
-      # Email Configuration
+      # Email Configuration - SMTP Relay
       - EMAIL_HOST=${EMAIL_HOST}
-      - EMAIL_PORT=${EMAIL_PORT:-587}
-      - EMAIL_HOST_USER=${EMAIL_HOST_USER}
-      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
+      - EMAIL_PORT=${EMAIL_PORT}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER:-}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD:-}
       - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
-      - EMAIL_USE_TLS=${EMAIL_USE_TLS:-True}
+      - EMAIL_USE_TLS=${EMAIL_USE_TLS:-False}
+      - EMAIL_USE_SSL=${EMAIL_USE_SSL:-False}
       
-      # Superuser
+      # Superuser (remove this after first setup)
       - CISO_SUPERUSER_EMAIL=${CISO_SUPERUSER_EMAIL}
       
       # Logging (optional)
@@ -49,6 +50,25 @@ services:
       timeout: 5s
       retries: 20
       start_period: 100s
+    # Temporary: Create superuser with default password on startup
+    command: >
+      sh -c "
+      poetry run python manage.py migrate &&
+      poetry run python manage.py shell -c \"
+      from iam.models import User;
+      if not User.objects.filter(email='${CISO_SUPERUSER_EMAIL}').exists():
+          user = User.objects.create_superuser(
+              email='${CISO_SUPERUSER_EMAIL}',
+              password='${TEMP_ADMIN_PASSWORD:-ChangeMe123!}',
+              first_name='System',
+              last_name='Overseer'
+          );
+          print('✓ Superuser created: ${CISO_SUPERUSER_EMAIL}');
+      else:
+          print('✓ Superuser already exists');
+      \" &&
+      poetry run gunicorn --bind 0.0.0.0:8000 --workers 4 --timeout 120 ciso_assistant.wsgi:application
+      "
 
   huey:
     container_name: huey
@@ -67,13 +87,14 @@ services:
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
       - AUTH_TOKEN_TTL=${AUTH_TOKEN_TTL:-7200}
       
-      # Email Configuration (needed for background tasks)
+      # Email Configuration - SMTP Relay
       - EMAIL_HOST=${EMAIL_HOST}
-      - EMAIL_PORT=${EMAIL_PORT:-587}
-      - EMAIL_HOST_USER=${EMAIL_HOST_USER}
-      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
+      - EMAIL_PORT=${EMAIL_PORT}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER:-}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD:-}
       - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
-      - EMAIL_USE_TLS=${EMAIL_USE_TLS:-True}
+      - EMAIL_USE_TLS=${EMAIL_USE_TLS:-False}
+      - EMAIL_USE_SSL=${EMAIL_USE_SSL:-False}
       
       # Logging
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
