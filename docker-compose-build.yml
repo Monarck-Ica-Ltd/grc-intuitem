@@ -2,7 +2,6 @@ version: "3.9"
 
 networks:
   default:
-    name: ${COOLIFY_NETWORK:-ciso-assistant-network}
     external: true
 
 services:
@@ -16,21 +15,13 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ciso_user} -d ${POSTGRES_NAME:-ciso_assistant}"]
       interval: 5s
       timeout: 5s
       retries: 5
       start_period: 30s
-    command: >
-      -c max_connections=200
-      -c shared_buffers=256MB
-      -c effective_cache_size=1GB
-      -c maintenance_work_mem=64MB
-      -c checkpoint_completion_target=0.9
-      -c wal_buffers=16MB
-      -c default_statistics_target=100
 
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -45,15 +36,7 @@ services:
       PGADMIN_CONFIG_SERVER_MODE: 'False'
       PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
     volumes:
-      - pgadmin_data:/var/lib/pgadmin
-    labels:
-      # Option A: Subdomain access (recommended)
-      - "caddy_0=pgadmin.monarck.net"
-      - "caddy_0.reverse_proxy={{upstreams 80}}"
-      # Option B: Path-based access (uncomment if preferred)
-      # - "caddy_0=${DOMAIN}"
-      # - "caddy_0.handle_path=/pgadmin*"
-      # - "caddy_0.handle_path.0_reverse_proxy={{upstreams 80}}"
+      - pgadmin-data:/var/lib/pgadmin
 
   backend:
     container_name: backend
@@ -64,29 +47,20 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      # Core Configuration
       - ALLOWED_HOSTS=backend,localhost,${DOMAIN}
       - CSRF_TRUSTED_ORIGINS=https://${DOMAIN}
       - CISO_ASSISTANT_URL=https://${DOMAIN}
       - DJANGO_DEBUG=False
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
-      
-      # PostgreSQL Configuration
       - POSTGRES_NAME=${POSTGRES_NAME:-ciso_assistant}
       - POSTGRES_USER=${POSTGRES_USER:-ciso_user}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - DB_HOST=postgres
       - DB_PORT=5432
-      
-      # Authentication
       - AUTH_TOKEN_TTL=${AUTH_TOKEN_TTL:-7200}
       - AUTH_TOKEN_AUTO_REFRESH=True
       - AUTH_TOKEN_AUTO_REFRESH_TTL=36000
-      
-      # Security
       - SECURE_PROXY_SSL_HEADER=HTTP_X_FORWARDED_PROTO,https
-      
-      # Email Configuration
       - EMAIL_HOST=${EMAIL_HOST}
       - EMAIL_PORT=${EMAIL_PORT}
       - EMAIL_HOST_USER=${EMAIL_HOST_USER:-}
@@ -94,11 +68,7 @@ services:
       - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
       - EMAIL_USE_TLS=${EMAIL_USE_TLS:-False}
       - EMAIL_USE_SSL=${EMAIL_USE_SSL:-False}
-      
-      # Superuser
       - CISO_SUPERUSER_EMAIL=${CISO_SUPERUSER_EMAIL}
-      
-      # Logging
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - LOG_FORMAT=${LOG_FORMAT:-plain}
     healthcheck:
@@ -117,23 +87,17 @@ services:
         condition: service_healthy
     restart: always
     environment:
-      # Core Configuration
       - ALLOWED_HOSTS=backend,localhost,${DOMAIN}
       - CSRF_TRUSTED_ORIGINS=https://${DOMAIN}
       - CISO_ASSISTANT_URL=https://${DOMAIN}
       - DJANGO_DEBUG=False
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
-      
-      # PostgreSQL Configuration
       - POSTGRES_NAME=${POSTGRES_NAME:-ciso_assistant}
       - POSTGRES_USER=${POSTGRES_USER:-ciso_user}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - DB_HOST=postgres
       - DB_PORT=5432
-      
       - AUTH_TOKEN_TTL=${AUTH_TOKEN_TTL:-7200}
-      
-      # Email Configuration
       - EMAIL_HOST=${EMAIL_HOST}
       - EMAIL_PORT=${EMAIL_PORT}
       - EMAIL_HOST_USER=${EMAIL_HOST_USER:-}
@@ -141,8 +105,6 @@ services:
       - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
       - EMAIL_USE_TLS=${EMAIL_USE_TLS:-False}
       - EMAIL_USE_SSL=${EMAIL_USE_SSL:-False}
-      
-      # Logging
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - LOG_FORMAT=${LOG_FORMAT:-plain}
     entrypoint:
@@ -165,10 +127,7 @@ services:
       - PROTOCOL_HEADER=x-forwarded-proto
       - HOST_HEADER=x-forwarded-host
       - ORIGIN=https://${DOMAIN}
-    labels:
-      - "caddy_0=${DOMAIN}"
-      - "caddy_0.reverse_proxy={{upstreams 3000}}"
 
 volumes:
-  postgres_data:
-  pgadmin_data:
+  postgres-data:
+  pgadmin-data:
