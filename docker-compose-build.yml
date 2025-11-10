@@ -3,13 +3,43 @@ version: "3.9"
 networks:
   default:
     external: true
+    name: coolify
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ciso-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ciso_assistant
+      POSTGRES_USER: ciso_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ciso_user -d ciso_assistant"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    command: >
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+
   backend:
     container_name: backend
     image: ghcr.io/intuitem/ciso-assistant-community/backend:latest
     pull_policy: always
     restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
       # Core Configuration
       - ALLOWED_HOSTS=backend,localhost,${DOMAIN}
@@ -18,12 +48,12 @@ services:
       - DJANGO_DEBUG=False
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
       
-      # PostgreSQL Configuration (External Database)
-      - POSTGRES_NAME=${POSTGRES_NAME}
-      - POSTGRES_USER=${POSTGRES_USER}
+      # PostgreSQL Configuration
+      - POSTGRES_NAME=ciso_assistant
+      - POSTGRES_USER=ciso_user
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT:-5432}
+      - DB_HOST=postgres
+      - DB_PORT=5432
       
       # Authentication
       - AUTH_TOKEN_TTL=${AUTH_TOKEN_TTL:-7200}
@@ -52,8 +82,8 @@ services:
       test: ["CMD-SHELL", "curl -f http://backend:8000/api/health/ || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 20
-      start_period: 120s
+      retries: 30
+      start_period: 180s
 
   huey:
     container_name: huey
@@ -71,12 +101,12 @@ services:
       - DJANGO_DEBUG=False
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
       
-      # PostgreSQL Configuration (External Database)
-      - POSTGRES_NAME=${POSTGRES_NAME}
-      - POSTGRES_USER=${POSTGRES_USER}
+      # PostgreSQL Configuration
+      - POSTGRES_NAME=ciso_assistant
+      - POSTGRES_USER=ciso_user
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT:-5432}
+      - DB_HOST=postgres
+      - DB_PORT=5432
       
       - AUTH_TOKEN_TTL=${AUTH_TOKEN_TTL:-7200}
       
@@ -112,3 +142,6 @@ services:
       - PROTOCOL_HEADER=x-forwarded-proto
       - HOST_HEADER=x-forwarded-host
       - ORIGIN=https://${DOMAIN}
+
+volumes:
+  postgres-data:
