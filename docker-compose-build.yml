@@ -50,14 +50,26 @@ services:
     container_name: caddy
     image: caddy:2.10.0
     environment:
-      - CISO_ASSISTANT_URL=https://localhost:8443
+      - CISO_ASSISTANT_URL=https://grc.monarck.net
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
     restart: unless-stopped
     ports:
-      - 8443:8443
+      - "8443:8443"
     volumes:
-      - ./db:/data
+      - ./caddy_data:/data
     command: |
-      sh -c 'echo $$CISO_ASSISTANT_URL "{
-      reverse_proxy /api/* backend:8000
-      reverse_proxy /* frontend:3000
-      }" > Caddyfile && caddy run'
+      sh -c 'echo ":8443 {
+        encode gzip
+        handle_path /api/* {
+          reverse_proxy backend:8000
+        }
+        handle {
+          reverse_proxy frontend:3000
+        }
+        tls internal
+      }" > /etc/caddy/Caddyfile && caddy run --config /etc/caddy/Caddyfile --adapter caddyfile'
+
