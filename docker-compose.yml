@@ -13,7 +13,7 @@ services:
       DB_ENGINE: django.db.backends.postgresql
       POSTGRES_NAME: postgres
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: p5bIAoNiH6mkFhyicp6tVGlxfNTOXll5ZrVNAKJsfmWIUMIYGOjiMWfAFR9dFjkT
       DB_HOST: s8cssssoo4k8kc80ow4ocw88
       DB_PORT: '5432'
       AUTH_TOKEN_TTL: '7200'
@@ -53,7 +53,7 @@ services:
       DB_ENGINE: django.db.backends.postgresql
       POSTGRES_NAME: postgres
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: p5bIAoNiH6mkFhyicp6tVGlxfNTOXll5ZrVNAKJsfmWIUMIYGOjiMWfAFR9dFjkT
       DB_HOST: s8cssssoo4k8kc80ow4ocw88
       DB_PORT: '5432'
       AUTH_TOKEN_TTL: '7200'
