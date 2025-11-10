@@ -1,9 +1,15 @@
 version: '3.8'
 
+networks:
+  coolify:
+    external: true
+
 services:
   backend:
     image: ghcr.io/intuitem/ciso-assistant-community/backend:latest
     restart: always
+    networks:
+      - coolify
     environment:
       ALLOWED_HOSTS: backend,localhost,${DOMAIN}
       CSRF_TRUSTED_ORIGINS: https://${DOMAIN}
@@ -42,6 +48,8 @@ services:
   huey:
     image: ghcr.io/intuitem/ciso-assistant-community/backend:latest
     restart: always
+    networks:
+      - coolify
     depends_on:
       - backend
     environment:
@@ -73,6 +81,8 @@ services:
   frontend:
     image: ghcr.io/intuitem/ciso-assistant-community/frontend:latest
     restart: always
+    networks:
+      - coolify
     depends_on:
       - backend
     environment:
