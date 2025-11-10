@@ -1,15 +1,12 @@
 version: "3.9"
 
-networks:
-  default:
-    external: true
-    name: coolify
-
 services:
   postgres:
     image: postgres:16-alpine
     container_name: ciso-postgres
     restart: always
+    networks:
+      - coolify
     environment:
       POSTGRES_DB: ciso_assistant
       POSTGRES_USER: ciso_user
@@ -37,34 +34,27 @@ services:
     image: ghcr.io/intuitem/ciso-assistant-community/backend:latest
     pull_policy: always
     restart: always
+    networks:
+      - coolify
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      # Core Configuration
       - ALLOWED_HOSTS=backend,localhost,${DOMAIN}
       - CSRF_TRUSTED_ORIGINS=https://${DOMAIN}
       - CISO_ASSISTANT_URL=https://${DOMAIN}
       - DJANGO_DEBUG=False
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
-      
-      # PostgreSQL Configuration (CRITICAL - tells Django to use PostgreSQL)
       - DB_ENGINE=django.db.backends.postgresql
       - POSTGRES_NAME=ciso_assistant
       - POSTGRES_USER=ciso_user
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - DB_HOST=postgres
+      - DB_HOST=ciso-postgres
       - DB_PORT=5432
-      
-      # Authentication
       - AUTH_TOKEN_TTL=${AUTH_TOKEN_TTL:-7200}
       - AUTH_TOKEN_AUTO_REFRESH=True
       - AUTH_TOKEN_AUTO_REFRESH_TTL=36000
-      
-      # Security
       - SECURE_PROXY_SSL_HEADER=HTTP_X_FORWARDED_PROTO,https
-      
-      # Email Configuration
       - EMAIL_HOST=${EMAIL_HOST}
       - EMAIL_PORT=${EMAIL_PORT}
       - EMAIL_HOST_USER=${EMAIL_HOST_USER:-}
@@ -72,11 +62,7 @@ services:
       - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
       - EMAIL_USE_TLS=${EMAIL_USE_TLS:-False}
       - EMAIL_USE_SSL=${EMAIL_USE_SSL:-False}
-      
-      # Superuser
       - CISO_SUPERUSER_EMAIL=${CISO_SUPERUSER_EMAIL}
-      
-      # Logging
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - LOG_FORMAT=${LOG_FORMAT:-plain}
     healthcheck:
@@ -90,29 +76,25 @@ services:
     container_name: huey
     image: ghcr.io/intuitem/ciso-assistant-community/backend:latest
     pull_policy: always
+    networks:
+      - coolify
     depends_on:
       backend:
         condition: service_healthy
     restart: always
     environment:
-      # Core Configuration
       - ALLOWED_HOSTS=backend,localhost,${DOMAIN}
       - CSRF_TRUSTED_ORIGINS=https://${DOMAIN}
       - CISO_ASSISTANT_URL=https://${DOMAIN}
       - DJANGO_DEBUG=False
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
-      
-      # PostgreSQL Configuration
       - DB_ENGINE=django.db.backends.postgresql
       - POSTGRES_NAME=ciso_assistant
       - POSTGRES_USER=ciso_user
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - DB_HOST=postgres
+      - DB_HOST=ciso-postgres
       - DB_PORT=5432
-      
       - AUTH_TOKEN_TTL=${AUTH_TOKEN_TTL:-7200}
-      
-      # Email Configuration
       - EMAIL_HOST=${EMAIL_HOST}
       - EMAIL_PORT=${EMAIL_PORT}
       - EMAIL_HOST_USER=${EMAIL_HOST_USER:-}
@@ -120,8 +102,6 @@ services:
       - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
       - EMAIL_USE_TLS=${EMAIL_USE_TLS:-False}
       - EMAIL_USE_SSL=${EMAIL_USE_SSL:-False}
-      
-      # Logging
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - LOG_FORMAT=${LOG_FORMAT:-plain}
     entrypoint:
@@ -135,6 +115,8 @@ services:
     image: ghcr.io/intuitem/ciso-assistant-community/frontend:latest
     pull_policy: always
     restart: always
+    networks:
+      - coolify
     depends_on:
       backend:
         condition: service_healthy
@@ -144,6 +126,10 @@ services:
       - PROTOCOL_HEADER=x-forwarded-proto
       - HOST_HEADER=x-forwarded-host
       - ORIGIN=https://${DOMAIN}
+
+networks:
+  coolify:
+    external: true
 
 volumes:
   postgres-data:
