@@ -1,5 +1,11 @@
 version: "3.9"
 
+networks:
+  # This network will be created by Coolify
+  default:
+    name: ${COOLIFY_NETWORK:-ciso-assistant-network}
+    external: true
+
 services:
   backend:
     container_name: backend
@@ -12,7 +18,6 @@ services:
       - CISO_ASSISTANT_URL=https://grc.monarck.net
       - DJANGO_DEBUG=False
       - AUTH_TOKEN_TTL=7200
-      # optional security hardening
       - SECURE_PROXY_SSL_HEADER=HTTP_X_FORWARDED_PROTO,https
     volumes:
       - ./db:/code/db
@@ -58,26 +63,11 @@ services:
       - PUBLIC_BACKEND_API_EXPOSED_URL=https://grc.monarck.net/api
       - PROTOCOL_HEADER=x-forwarded-proto
       - HOST_HEADER=x-forwarded-host
-
-  caddy:
-    container_name: caddy
-    image: caddy:2.10.0
-    environment:
-      - CISO_ASSISTANT_URL=https://grc.monarck.net
-    depends_on:
-      backend:
-        condition: service_healthy
-    restart: unless-stopped
-    ports:
-      - "8443:8443"
-    volumes:
-      - ./caddy_data:/data
-    command: |
-      sh -c 'echo $$CISO_ASSISTANT_URL "{
-      reverse_proxy /api/* backend:8000
-      reverse_proxy /* frontend:3000
-      tls internal
-      }" > Caddyfile && caddy run'
+      - ORIGIN=https://grc.monarck.net
+    labels:
+      # Coolify will use these labels for proxy configuration
+      - "caddy_0=grc.monarck.net"
+      - "caddy_0.reverse_proxy={{upstreams 3000}}"
 
 volumes:
   db:
