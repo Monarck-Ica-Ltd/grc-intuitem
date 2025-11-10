@@ -14,28 +14,28 @@ services:
       ALLOWED_HOSTS: backend,localhost,${DOMAIN}
       CSRF_TRUSTED_ORIGINS: https://${DOMAIN}
       CISO_ASSISTANT_URL: https://${DOMAIN}
-      DJANGO_DEBUG: 'False'
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-False}
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
-      DB_ENGINE: django.db.backends.postgresql
-      POSTGRES_NAME: postgres
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: p5bIAoNiH6mkFhyicp6tVGlxfNTOXll5ZrVNAKJsfmWIUMIYGOjiMWfAFR9dFjkT
-      DB_HOST: 10.0.1.9
-      DB_PORT: '5432'
-      AUTH_TOKEN_TTL: '7200'
-      AUTH_TOKEN_AUTO_REFRESH: 'True'
-      AUTH_TOKEN_AUTO_REFRESH_TTL: '36000'
+      DB_ENGINE: ${DB_ENGINE:-django.db.backends.postgresql}
+      POSTGRES_NAME: ${POSTGRES_NAME:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-5432}
+      AUTH_TOKEN_TTL: ${AUTH_TOKEN_TTL:-7200}
+      AUTH_TOKEN_AUTO_REFRESH: ${AUTH_TOKEN_AUTO_REFRESH:-True}
+      AUTH_TOKEN_AUTO_REFRESH_TTL: ${AUTH_TOKEN_AUTO_REFRESH_TTL:-36000}
       SECURE_PROXY_SSL_HEADER: HTTP_X_FORWARDED_PROTO,https
       EMAIL_HOST: ${EMAIL_HOST}
       EMAIL_PORT: ${EMAIL_PORT}
-      EMAIL_HOST_USER: ''
-      EMAIL_HOST_PASSWORD: ''
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER:-}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD:-}
       DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL}
-      EMAIL_USE_TLS: 'False'
-      EMAIL_USE_SSL: 'False'
+      EMAIL_USE_TLS: ${EMAIL_USE_TLS:-False}
+      EMAIL_USE_SSL: ${EMAIL_USE_SSL:-False}
       CISO_SUPERUSER_EMAIL: ${CISO_SUPERUSER_EMAIL}
-      LOG_LEVEL: INFO
-      LOG_FORMAT: plain
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-plain}
     volumes:
       - huey_data:/code/db
     healthcheck:
@@ -56,24 +56,24 @@ services:
       ALLOWED_HOSTS: backend,localhost,${DOMAIN}
       CSRF_TRUSTED_ORIGINS: https://${DOMAIN}
       CISO_ASSISTANT_URL: https://${DOMAIN}
-      DJANGO_DEBUG: 'False'
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-False}
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
-      DB_ENGINE: django.db.backends.postgresql
-      POSTGRES_NAME: postgres
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: p5bIAoNiH6mkFhyicp6tVGlxfNTOXll5ZrVNAKJsfmWIUMIYGOjiMWfAFR9dFjkT
-      DB_HOST: 10.0.1.9
-      DB_PORT: '5432'
-      AUTH_TOKEN_TTL: '7200'
+      DB_ENGINE: ${DB_ENGINE:-django.db.backends.postgresql}
+      POSTGRES_NAME: ${POSTGRES_NAME:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-5432}
+      AUTH_TOKEN_TTL: ${AUTH_TOKEN_TTL:-7200}
       EMAIL_HOST: ${EMAIL_HOST}
       EMAIL_PORT: ${EMAIL_PORT}
-      EMAIL_HOST_USER: ''
-      EMAIL_HOST_PASSWORD: ''
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER:-}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD:-}
       DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL}
-      EMAIL_USE_TLS: 'False'
-      EMAIL_USE_SSL: 'False'
-      LOG_LEVEL: INFO
-      LOG_FORMAT: plain
+      EMAIL_USE_TLS: ${EMAIL_USE_TLS:-False}
+      EMAIL_USE_SSL: ${EMAIL_USE_SSL:-False}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-plain}
     volumes:
       - huey_data:/code/db
     command: sh -c "poetry run python manage.py run_huey -w 2 --scheduler-interval 60"
