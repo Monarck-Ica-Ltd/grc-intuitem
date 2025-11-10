@@ -1,6 +1,4 @@
-version: "3.9"
-
-# Remove the networks section entirely, let Coolify handle it
+version: '3.8'
 
 services:
   postgres:
@@ -12,49 +10,48 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ciso_user -d ciso_assistant"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
       start_period: 30s
 
   backend:
     image: ghcr.io/intuitem/ciso-assistant-community/backend:latest
-    pull_policy: always
     restart: always
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      - ALLOWED_HOSTS=backend,localhost,${DOMAIN}
-      - CSRF_TRUSTED_ORIGINS=https://${DOMAIN}
-      - CISO_ASSISTANT_URL=https://${DOMAIN}
-      - DJANGO_DEBUG=False
-      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
-      - DB_ENGINE=django.db.backends.postgresql
-      - POSTGRES_NAME=ciso_assistant
-      - POSTGRES_USER=ciso_user
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - AUTH_TOKEN_TTL=${AUTH_TOKEN_TTL:-7200}
-      - AUTH_TOKEN_AUTO_REFRESH=True
-      - AUTH_TOKEN_AUTO_REFRESH_TTL=36000
-      - SECURE_PROXY_SSL_HEADER=HTTP_X_FORWARDED_PROTO,https
-      - EMAIL_HOST=${EMAIL_HOST}
-      - EMAIL_PORT=${EMAIL_PORT}
-      - EMAIL_HOST_USER=${EMAIL_HOST_USER:-}
-      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD:-}
-      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
-      - EMAIL_USE_TLS=${EMAIL_USE_TLS:-False}
-      - EMAIL_USE_SSL=${EMAIL_USE_SSL:-False}
-      - CISO_SUPERUSER_EMAIL=${CISO_SUPERUSER_EMAIL}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - LOG_FORMAT=${LOG_FORMAT:-plain}
+      ALLOWED_HOSTS: backend,localhost,${DOMAIN}
+      CSRF_TRUSTED_ORIGINS: https://${DOMAIN}
+      CISO_ASSISTANT_URL: https://${DOMAIN}
+      DJANGO_DEBUG: 'False'
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DB_ENGINE: django.db.backends.postgresql
+      POSTGRES_NAME: ciso_assistant
+      POSTGRES_USER: ciso_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_HOST: postgres
+      DB_PORT: '5432'
+      AUTH_TOKEN_TTL: '7200'
+      AUTH_TOKEN_AUTO_REFRESH: 'True'
+      AUTH_TOKEN_AUTO_REFRESH_TTL: '36000'
+      SECURE_PROXY_SSL_HEADER: HTTP_X_FORWARDED_PROTO,https
+      EMAIL_HOST: ${EMAIL_HOST}
+      EMAIL_PORT: ${EMAIL_PORT}
+      EMAIL_HOST_USER: ''
+      EMAIL_HOST_PASSWORD: ''
+      DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL}
+      EMAIL_USE_TLS: 'False'
+      EMAIL_USE_SSL: 'False'
+      CISO_SUPERUSER_EMAIL: ${CISO_SUPERUSER_EMAIL}
+      LOG_LEVEL: INFO
+      LOG_FORMAT: plain
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://backend:8000/api/health/ || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/health/ || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 30
@@ -62,52 +59,46 @@ services:
 
   huey:
     image: ghcr.io/intuitem/ciso-assistant-community/backend:latest
-    pull_policy: always
+    restart: always
     depends_on:
       backend:
         condition: service_healthy
-    restart: always
     environment:
-      - ALLOWED_HOSTS=backend,localhost,${DOMAIN}
-      - CSRF_TRUSTED_ORIGINS=https://${DOMAIN}
-      - CISO_ASSISTANT_URL=https://${DOMAIN}
-      - DJANGO_DEBUG=False
-      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
-      - DB_ENGINE=django.db.backends.postgresql
-      - POSTGRES_NAME=ciso_assistant
-      - POSTGRES_USER=ciso_user
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - AUTH_TOKEN_TTL=${AUTH_TOKEN_TTL:-7200}
-      - EMAIL_HOST=${EMAIL_HOST}
-      - EMAIL_PORT=${EMAIL_PORT}
-      - EMAIL_HOST_USER=${EMAIL_HOST_USER:-}
-      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD:-}
-      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
-      - EMAIL_USE_TLS=${EMAIL_USE_TLS:-False}
-      - EMAIL_USE_SSL=${EMAIL_USE_SSL:-False}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
-      - LOG_FORMAT=${LOG_FORMAT:-plain}
-    entrypoint:
-      - /bin/sh
-      - -c
-      - |
-        poetry run python manage.py run_huey -w 2 --scheduler-interval 60
+      ALLOWED_HOSTS: backend,localhost,${DOMAIN}
+      CSRF_TRUSTED_ORIGINS: https://${DOMAIN}
+      CISO_ASSISTANT_URL: https://${DOMAIN}
+      DJANGO_DEBUG: 'False'
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DB_ENGINE: django.db.backends.postgresql
+      POSTGRES_NAME: ciso_assistant
+      POSTGRES_USER: ciso_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_HOST: postgres
+      DB_PORT: '5432'
+      AUTH_TOKEN_TTL: '7200'
+      EMAIL_HOST: ${EMAIL_HOST}
+      EMAIL_PORT: ${EMAIL_PORT}
+      EMAIL_HOST_USER: ''
+      EMAIL_HOST_PASSWORD: ''
+      DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL}
+      EMAIL_USE_TLS: 'False'
+      EMAIL_USE_SSL: 'False'
+      LOG_LEVEL: INFO
+      LOG_FORMAT: plain
+    command: sh -c "poetry run python manage.py run_huey -w 2 --scheduler-interval 60"
 
   frontend:
     image: ghcr.io/intuitem/ciso-assistant-community/frontend:latest
-    pull_policy: always
     restart: always
     depends_on:
       backend:
         condition: service_healthy
     environment:
-      - PUBLIC_BACKEND_API_URL=http://backend:8000/api
-      - PUBLIC_BACKEND_API_EXPOSED_URL=https://${DOMAIN}/api
-      - PROTOCOL_HEADER=x-forwarded-proto
-      - HOST_HEADER=x-forwarded-host
-      - ORIGIN=https://${DOMAIN}
+      PUBLIC_BACKEND_API_URL: http://backend:8000/api
+      PUBLIC_BACKEND_API_EXPOSED_URL: https://${DOMAIN}/api
+      PROTOCOL_HEADER: x-forwarded-proto
+      HOST_HEADER: x-forwarded-host
+      ORIGIN: https://${DOMAIN}
 
 volumes:
-  postgres-data:
+  postgres_data:
