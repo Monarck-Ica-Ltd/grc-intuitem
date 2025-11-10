@@ -1,31 +1,150 @@
+version: "3.9"
+
+networks:
+  default:
+    name: ${COOLIFY_NETWORK:-ciso-assistant-network}
+    external: true
+
 services:
-  backend:
-    container_name: backend
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
     restart: always
     environment:
-      - ALLOWED_HOSTS=backend,localhost
-      - CISO_ASSISTANT_URL=https://localhost:8443
-      - DJANGO_DEBUG=True
+      POSTGRES_DB: ${POSTGRES_NAME:-ciso_assistant}
+      POSTGRES_USER: ${POSTGRES_USER:-ciso_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
-      - ./db:/code/db
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ciso_user} -d ${POSTGRES_NAME:-ciso_assistant}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    command: >
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c maintenance_work_mem=64MB
+      -c checkpoint_completion_target=0.9
+      -c wal_buffers=16MB
+      -c default_statistics_target=100
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@monarck.net}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    labels:
+      # Option A: Subdomain access (recommended)
+      - "caddy_0=pgadmin.monarck.net"
+      - "caddy_0.reverse_proxy={{upstreams 80}}"
+      # Option B: Path-based access (uncomment if preferred)
+      # - "caddy_0=${DOMAIN}"
+      # - "caddy_0.handle_path=/pgadmin*"
+      # - "caddy_0.handle_path.0_reverse_proxy={{upstreams 80}}"
+
+  backend:
+    container_name: backend
+    image: ghcr.io/intuitem/ciso-assistant-community/backend:latest
+    pull_policy: always
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Core Configuration
+      - ALLOWED_HOSTS=backend,localhost,${DOMAIN}
+      - CSRF_TRUSTED_ORIGINS=https://${DOMAIN}
+      - CISO_ASSISTANT_URL=https://${DOMAIN}
+      - DJANGO_DEBUG=False
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      
+      # PostgreSQL Configuration
+      - POSTGRES_NAME=${POSTGRES_NAME:-ciso_assistant}
+      - POSTGRES_USER=${POSTGRES_USER:-ciso_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      
+      # Authentication
+      - AUTH_TOKEN_TTL=${AUTH_TOKEN_TTL:-7200}
+      - AUTH_TOKEN_AUTO_REFRESH=True
+      - AUTH_TOKEN_AUTO_REFRESH_TTL=36000
+      
+      # Security
+      - SECURE_PROXY_SSL_HEADER=HTTP_X_FORWARDED_PROTO,https
+      
+      # Email Configuration
+      - EMAIL_HOST=${EMAIL_HOST}
+      - EMAIL_PORT=${EMAIL_PORT}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER:-}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD:-}
+      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
+      - EMAIL_USE_TLS=${EMAIL_USE_TLS:-False}
+      - EMAIL_USE_SSL=${EMAIL_USE_SSL:-False}
+      
+      # Superuser
+      - CISO_SUPERUSER_EMAIL=${CISO_SUPERUSER_EMAIL}
+      
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FORMAT=${LOG_FORMAT:-plain}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://backend:8000/api/health/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 120s
 
   huey:
     container_name: huey
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: ghcr.io/intuitem/ciso-assistant-community/backend:latest
+    pull_policy: always
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: always
     environment:
-      - ALLOWED_HOSTS=backend,localhost
-      - CISO_ASSISTANT_URL=https://localhost:8443
+      # Core Configuration
+      - ALLOWED_HOSTS=backend,localhost,${DOMAIN}
+      - CSRF_TRUSTED_ORIGINS=https://${DOMAIN}
+      - CISO_ASSISTANT_URL=https://${DOMAIN}
       - DJANGO_DEBUG=False
-    volumes:
-      - ./db:/code/db
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      
+      # PostgreSQL Configuration
+      - POSTGRES_NAME=${POSTGRES_NAME:-ciso_assistant}
+      - POSTGRES_USER=${POSTGRES_USER:-ciso_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      
+      - AUTH_TOKEN_TTL=${AUTH_TOKEN_TTL:-7200}
+      
+      # Email Configuration
+      - EMAIL_HOST=${EMAIL_HOST}
+      - EMAIL_PORT=${EMAIL_PORT}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER:-}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD:-}
+      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}
+      - EMAIL_USE_TLS=${EMAIL_USE_TLS:-False}
+      - EMAIL_USE_SSL=${EMAIL_USE_SSL:-False}
+      
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FORMAT=${LOG_FORMAT:-plain}
     entrypoint:
       - /bin/sh
       - -c
@@ -34,42 +153,22 @@ services:
 
   frontend:
     container_name: frontend
-    environment:
-      - PUBLIC_BACKEND_API_URL=http://backend:8000/api
-      - PUBLIC_BACKEND_API_EXPOSED_URL=https://grc.monarck.net/api
-      - PROTOCOL_HEADER=x-forwarded-proto
-      - HOST_HEADER=x-forwarded-host
-
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    depends_on:
-      - backend
-
-  caddy:
-    container_name: caddy
-    image: caddy:2.10.0
-    environment:
-      - CISO_ASSISTANT_URL=https://grc.monarck.net
+    image: ghcr.io/intuitem/ciso-assistant-community/frontend:latest
+    pull_policy: always
+    restart: always
     depends_on:
       backend:
         condition: service_healthy
-      frontend:
-        condition: service_started
-    restart: unless-stopped
-    ports:
-      - "8443:8443"
-    volumes:
-      - ./caddy_data:/data
-    command: |
-      sh -c 'echo ":8443 {
-        encode gzip
-        handle_path /api/* {
-          reverse_proxy backend:8000
-        }
-        handle {
-          reverse_proxy frontend:3000
-        }
-        tls internal
-      }" > /etc/caddy/Caddyfile && caddy run --config /etc/caddy/Caddyfile --adapter caddyfile'
+    environment:
+      - PUBLIC_BACKEND_API_URL=http://backend:8000/api
+      - PUBLIC_BACKEND_API_EXPOSED_URL=https://${DOMAIN}/api
+      - PROTOCOL_HEADER=x-forwarded-proto
+      - HOST_HEADER=x-forwarded-host
+      - ORIGIN=https://${DOMAIN}
+    labels:
+      - "caddy_0=${DOMAIN}"
+      - "caddy_0.reverse_proxy={{upstreams 3000}}"
 
+volumes:
+  postgres_data:
+  pgadmin_data:
