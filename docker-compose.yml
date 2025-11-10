@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   backend:
     container_name: backend
@@ -5,11 +7,13 @@ services:
     pull_policy: always
     restart: always
     environment:
-      - ALLOWED_HOSTS=backend,localhost
-      - CISO_ASSISTANT_URL=https://localhost:8443
-      - DJANGO_DEBUG=True
+      - ALLOWED_HOSTS=backend,localhost,grc.monarck.net
+      - CSRF_TRUSTED_ORIGINS=https://grc.monarck.net
+      - CISO_ASSISTANT_URL=https://grc.monarck.net
+      - DJANGO_DEBUG=False
       - AUTH_TOKEN_TTL=7200
-
+      # optional security hardening
+      - SECURE_PROXY_SSL_HEADER=HTTP_X_FORWARDED_PROTO,https
     volumes:
       - ./db:/code/db
     healthcheck:
@@ -28,11 +32,11 @@ services:
         condition: service_healthy
     restart: always
     environment:
-      - ALLOWED_HOSTS=backend,localhost
-      - CISO_ASSISTANT_URL=https://localhost:8443
+      - ALLOWED_HOSTS=backend,localhost,grc.monarck.net
+      - CSRF_TRUSTED_ORIGINS=https://grc.monarck.net
+      - CISO_ASSISTANT_URL=https://grc.monarck.net
       - DJANGO_DEBUG=False
       - AUTH_TOKEN_TTL=7200
-
     volumes:
       - ./db:/code/db
     entrypoint:
@@ -43,29 +47,29 @@ services:
 
   frontend:
     container_name: frontend
-    environment:
-      - PUBLIC_BACKEND_API_URL=http://backend:8000/api
-      - PUBLIC_BACKEND_API_EXPOSED_URL=https://localhost:8443/api
-      - PROTOCOL_HEADER=x-forwarded-proto
-      - HOST_HEADER=x-forwarded-host
     image: ghcr.io/intuitem/ciso-assistant-community/frontend:latest
     pull_policy: always
     restart: always
     depends_on:
       backend:
         condition: service_healthy
+    environment:
+      - PUBLIC_BACKEND_API_URL=http://backend:8000/api
+      - PUBLIC_BACKEND_API_EXPOSED_URL=https://grc.monarck.net/api
+      - PROTOCOL_HEADER=x-forwarded-proto
+      - HOST_HEADER=x-forwarded-host
 
   caddy:
     container_name: caddy
     image: caddy:2.10.0
     environment:
-      - CISO_ASSISTANT_URL=https://localhost:8443
+      - CISO_ASSISTANT_URL=https://grc.monarck.net
     depends_on:
       backend:
         condition: service_healthy
     restart: unless-stopped
     ports:
-      - 8443:8443
+      - "8443:8443"
     volumes:
       - ./caddy_data:/data
     command: |
@@ -74,3 +78,6 @@ services:
       reverse_proxy /* frontend:3000
       tls internal
       }" > Caddyfile && caddy run'
+
+volumes:
+  db:
