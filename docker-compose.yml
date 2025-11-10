@@ -14,7 +14,7 @@ services:
       POSTGRES_NAME: postgres
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: p5bIAoNiH6mkFhyicp6tVGlxfNTOXll5ZrVNAKJsfmWIUMIYGOjiMWfAFR9dFjkT
-      DB_HOST: s8cssssoo4k8kc80ow4ocw88
+      DB_HOST: 10.0.1.9
       DB_PORT: '5432'
       AUTH_TOKEN_TTL: '7200'
       AUTH_TOKEN_AUTO_REFRESH: 'True'
@@ -54,7 +54,7 @@ services:
       POSTGRES_NAME: postgres
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: p5bIAoNiH6mkFhyicp6tVGlxfNTOXll5ZrVNAKJsfmWIUMIYGOjiMWfAFR9dFjkT
-      DB_HOST: s8cssssoo4k8kc80ow4ocw88
+      DB_HOST: 10.0.1.9
       DB_PORT: '5432'
       AUTH_TOKEN_TTL: '7200'
       EMAIL_HOST: ${EMAIL_HOST}
