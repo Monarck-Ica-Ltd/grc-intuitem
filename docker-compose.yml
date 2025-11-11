@@ -6,13 +6,12 @@ networks:
 
 services:
   backend:
-    container_name: ciso-backend
     image: ghcr.io/intuitem/ciso-assistant-community/backend:latest
     restart: always
     networks:
       - coolify
     environment:
-      ALLOWED_HOSTS: backend,ciso-backend,localhost,${DOMAIN}
+      ALLOWED_HOSTS: backend,localhost,${DOMAIN}
       CSRF_TRUSTED_ORIGINS: https://${DOMAIN}
       CISO_ASSISTANT_URL: https://${DOMAIN}
       DJANGO_DEBUG: ${DJANGO_DEBUG:-False}
@@ -45,9 +44,10 @@ services:
       timeout: 5s
       retries: 30
       start_period: 180s
+    ports:
+      - "8000"
 
   huey:
-    container_name: ciso-huey
     image: ghcr.io/intuitem/ciso-assistant-community/backend:latest
     restart: always
     networks:
@@ -55,7 +55,7 @@ services:
     depends_on:
       - backend
     environment:
-      ALLOWED_HOSTS: backend,ciso-backend,localhost,${DOMAIN}
+      ALLOWED_HOSTS: backend,localhost,${DOMAIN}
       CSRF_TRUSTED_ORIGINS: https://${DOMAIN}
       CISO_ASSISTANT_URL: https://${DOMAIN}
       DJANGO_DEBUG: ${DJANGO_DEBUG:-False}
@@ -81,7 +81,6 @@ services:
     command: sh -c "poetry run python manage.py run_huey -w 2 --scheduler-interval 60"
 
   frontend:
-    container_name: ciso-frontend
     image: ghcr.io/intuitem/ciso-assistant-community/frontend:latest
     restart: always
     networks:
@@ -89,7 +88,7 @@ services:
     depends_on:
       - backend
     environment:
-      PUBLIC_BACKEND_API_URL: http://ciso-backend:8000/api
+      PUBLIC_BACKEND_API_URL: ${PUBLIC_BACKEND_API_URL:-http://backend:8000/api}
       PUBLIC_BACKEND_API_EXPOSED_URL: https://${DOMAIN}/api
       PROTOCOL_HEADER: x-forwarded-proto
       HOST_HEADER: x-forwarded-host
