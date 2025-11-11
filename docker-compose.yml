@@ -9,7 +9,9 @@ services:
     image: ghcr.io/intuitem/ciso-assistant-community/backend:latest
     restart: always
     networks:
-      - coolify
+      coolify:
+        aliases:
+          - backend
     environment:
       ALLOWED_HOSTS: backend,localhost,${DOMAIN}
       CSRF_TRUSTED_ORIGINS: https://${DOMAIN}
@@ -23,8 +25,8 @@ services:
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT:-5432}
       AUTH_TOKEN_TTL: ${AUTH_TOKEN_TTL:-7200}
-      AUTH_TOKEN_AUTO_REFRESH: ${AUTH_TOKEN_AUTO_REFRESH:-True}
-      AUTH_TOKEN_AUTO_REFRESH_TTL: ${AUTH_TOKEN_AUTO_REFRESH_TTL:-36000}
+      AUTH_TOKEN_AUTO_REFRESH: True
+      AUTH_TOKEN_AUTO_REFRESH_TTL: 36000
       SECURE_PROXY_SSL_HEADER: HTTP_X_FORWARDED_PROTO,https
       EMAIL_HOST: ${EMAIL_HOST}
       EMAIL_PORT: ${EMAIL_PORT}
@@ -44,8 +46,6 @@ services:
       timeout: 5s
       retries: 30
       start_period: 180s
-    ports:
-      - "8000"
 
   huey:
     image: ghcr.io/intuitem/ciso-assistant-community/backend:latest
@@ -53,7 +53,8 @@ services:
     networks:
       - coolify
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     environment:
       ALLOWED_HOSTS: backend,localhost,${DOMAIN}
       CSRF_TRUSTED_ORIGINS: https://${DOMAIN}
@@ -86,9 +87,10 @@ services:
     networks:
       - coolify
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     environment:
-      PUBLIC_BACKEND_API_URL: ${PUBLIC_BACKEND_API_URL:-http://backend:8000/api}
+      PUBLIC_BACKEND_API_URL: http://backend:8000/api
       PUBLIC_BACKEND_API_EXPOSED_URL: https://${DOMAIN}/api
       PROTOCOL_HEADER: x-forwarded-proto
       HOST_HEADER: x-forwarded-host
